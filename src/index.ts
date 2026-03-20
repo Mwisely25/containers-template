@@ -46,7 +46,13 @@ app.get("/container/:id", async (c) => {
 	const id = c.req.param("id");
 	const containerId = c.env.MY_CONTAINER.idFromName(`/container/${id}`);
 	const container = c.env.MY_CONTAINER.get(containerId);
-	return await container.fetch(c.req.raw);
+
+	// Remove the durable-object routing segment before forwarding to the container app.
+	// The container server handles /container, but this worker route receives /container/:id.
+	const upstreamUrl = new URL(c.req.url);
+	upstreamUrl.pathname = "/container";
+
+	return await container.fetch(new Request(upstreamUrl.toString(), c.req.raw));
 });
 
 // Demonstrate error handling - this route forces a panic in the container
