@@ -1,4 +1,5 @@
 import { Container, getContainer, getRandom } from "@cloudflare/containers";
+import type { Context } from "hono";
 import { Hono } from "hono";
 
 export class MyContainer extends Container<Env> {
@@ -41,18 +42,31 @@ app.get("/", (c) => {
 	);
 });
 
-// Route requests to a specific container using the container ID
-app.get("/container/:id", async (c) => {
+const forwardToNamedContainer = async (
+	c: Context<{ Bindings: Env }>,
+	pathSuffix = "",
+) => {
 	const id = c.req.param("id");
 	const containerId = c.env.MY_CONTAINER.idFromName(`/container/${id}`);
 	const container = c.env.MY_CONTAINER.get(containerId);
 
-	// Remove the durable-object routing segment before forwarding to the container app.
-	// The container server handles /container, but this worker route receives /container/:id.
+	// Strip the worker-only routing prefix and forward the request to the container.
 	const upstreamUrl = new URL(c.req.url);
-	upstreamUrl.pathname = "/container";
+	upstreamUrl.pathname = `/container${pathSuffix}`.replace(/\/+$/, "") || "/container";
 
 	return await container.fetch(new Request(upstreamUrl.toString(), c.req.raw));
+};
+
+// Route requests to a specific container using the container ID
+app.get("/container/:id", async (c) => {
+	return await forwardToNamedContainer(c);
+});
+
+// Preserve paths beneath /container/:id/... when proxying to the container.
+app.all("/container/:id/*", async (c) => {
+	const wildcardPath = c.req.param("*");
+	const pathSuffix = wildcardPath && wildcardPath.length > 0 ? `/${wildcardPath}` : "";
+	return await forwardToNamedContainer(c, pathSuffix);
 });
 
 // Demonstrate error handling - this route forces a panic in the container
