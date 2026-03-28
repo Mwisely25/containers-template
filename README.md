@@ -43,6 +43,18 @@ Open [http://localhost:8787](http://localhost:8787) with your browser to see the
 You can start editing your Worker by modifying `src/index.ts` and you can start
 editing your Container by editing the content of `container_src`.
 
+
+## Crewproof readiness updates
+
+The Worker now includes:
+
+- API health endpoint: `GET /api/health`
+- Lead intake endpoint: `POST /api/lead` (JSON-only)
+- JSON firewall on `/api/*` for mutating requests:
+  - Requires `Content-Type: application/json`
+  - Rejects payloads over 100 KB
+- Security headers on all responses
+
 ## Deploying To Production
 
 | Command          | Action                                |

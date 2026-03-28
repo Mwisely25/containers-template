@@ -1,18 +1,16 @@
 import { Container, getContainer, getRandom } from "@cloudflare/containers";
-import type { Context } from "hono";
+import type { Context, Next } from "hono";
 import { Hono } from "hono";
 
+const JSON_BODY_LIMIT_BYTES = 100_000;
+
 export class MyContainer extends Container<Env> {
-	// Port the container listens on (default: 8080)
 	defaultPort = 8080;
-	// Time before container sleeps due to inactivity (default: 30s)
 	sleepAfter = "2m";
-	// Environment variables passed to the container
 	envVars = {
 		MESSAGE: "I was passed in via the container class!",
 	};
 
-	// Optional lifecycle hooks
 	override onStart() {
 		console.log("Container successfully started");
 	}
@@ -26,20 +24,82 @@ export class MyContainer extends Container<Env> {
 	}
 }
 
-// Create Hono app with proper typing for Cloudflare Workers
-const app = new Hono<{
-	Bindings: Env;
-}>();
+const app = new Hono<{ Bindings: Env }>();
 
-// Home route with available endpoints
+const securityHeaders = async (c: Context<{ Bindings: Env }>, next: Next) => {
+	await next();
+	c.header("X-Content-Type-Options", "nosniff");
+	c.header("X-Frame-Options", "DENY");
+	c.header("Referrer-Policy", "no-referrer");
+};
+
+const jsonFirewall = async (c: Context<{ Bindings: Env }>, next: Next) => {
+	if (!["POST", "PUT", "PATCH"].includes(c.req.method)) {
+		await next();
+		return;
+	}
+
+	const contentType = c.req.header("content-type") ?? "";
+	if (!contentType.toLowerCase().includes("application/json")) {
+		return c.json(
+			{ error: "Unsupported Media Type", message: "Use application/json" },
+			415,
+		);
+	}
+
+	const rawLength = c.req.header("content-length");
+	if (rawLength) {
+		const contentLength = Number(rawLength);
+		if (!Number.isNaN(contentLength) && contentLength > JSON_BODY_LIMIT_BYTES) {
+			return c.json(
+				{ error: "Payload Too Large", maxBytes: JSON_BODY_LIMIT_BYTES },
+				413,
+			);
+		}
+	}
+
+	await next();
+};
+
+app.use("*", securityHeaders);
+app.use("/api/*", jsonFirewall);
+
 app.get("/", (c) => {
 	return c.text(
-		"Available endpoints:\n" +
-			"GET /container/<ID> - Start a container for each ID with a 2m timeout\n" +
-			"GET /lb - Load balance requests over multiple containers\n" +
-			"GET /error - Start a container that errors (demonstrates error handling)\n" +
-			"GET /singleton - Get a single specific container instance",
+		"Crewproof endpoints:\n" +
+			"GET /api/health - API availability\n" +
+			"POST /api/lead - Validate lead intake JSON\n" +
+			"GET /container/<ID> - Start a container for each ID\n" +
+			"GET /lb - Load balance over multiple containers\n" +
+			"GET /error - Start a container that errors\n" +
+			"GET /singleton - Get one specific container instance",
 	);
+});
+
+app.get("/api/health", (c) => {
+	return c.json({
+		status: "ok",
+		service: "crewproof",
+		timestamp: new Date().toISOString(),
+	});
+});
+
+app.post("/api/lead", async (c) => {
+	const payload = await c.req.json().catch(() => null);
+	if (!payload || typeof payload !== "object") {
+		return c.json({ error: "Invalid JSON body" }, 400);
+	}
+
+	const email = "email" in payload ? payload.email : undefined;
+	const message = "message" in payload ? payload.message : undefined;
+	if (typeof email !== "string" || !email.includes("@")) {
+		return c.json({ error: "Valid email is required" }, 400);
+	}
+	if (typeof message !== "string" || message.trim().length < 5) {
+		return c.json({ error: "Message must be at least 5 characters" }, 400);
+	}
+
+	return c.json({ accepted: true, receivedAt: new Date().toISOString() }, 201);
 });
 
 const forwardToNamedContainer = async (
@@ -50,41 +110,44 @@ const forwardToNamedContainer = async (
 	const containerId = c.env.MY_CONTAINER.idFromName(`/container/${id}`);
 	const container = c.env.MY_CONTAINER.get(containerId);
 
-	// Strip the worker-only routing prefix and forward the request to the container.
 	const upstreamUrl = new URL(c.req.url);
 	upstreamUrl.pathname = `/container${pathSuffix}`.replace(/\/+$/, "") || "/container";
 
 	return await container.fetch(new Request(upstreamUrl.toString(), c.req.raw));
 };
 
-// Route requests to a specific container using the container ID
 app.get("/container/:id", async (c) => {
 	return await forwardToNamedContainer(c);
 });
 
-// Preserve paths beneath /container/:id/... when proxying to the container.
 app.all("/container/:id/*", async (c) => {
 	const wildcardPath = c.req.param("*");
 	const pathSuffix = wildcardPath && wildcardPath.length > 0 ? `/${wildcardPath}` : "";
 	return await forwardToNamedContainer(c, pathSuffix);
 });
 
-// Demonstrate error handling - this route forces a panic in the container
 app.get("/error", async (c) => {
 	const container = getContainer(c.env.MY_CONTAINER, "error-test");
 	return await container.fetch(c.req.raw);
 });
 
-// Load balance requests across multiple containers
 app.get("/lb", async (c) => {
 	const container = await getRandom(c.env.MY_CONTAINER, 3);
 	return await container.fetch(c.req.raw);
 });
 
-// Get a single container instance (singleton pattern)
 app.get("/singleton", async (c) => {
 	const container = getContainer(c.env.MY_CONTAINER);
 	return await container.fetch(c.req.raw);
+});
+
+app.notFound((c) => {
+	return c.json({ error: "Not Found" }, 404);
+});
+
+app.onError((err, c) => {
+	console.error("Unhandled worker error", err);
+	return c.json({ error: "Internal Server Error" }, 500);
 });
 
 export default app;
