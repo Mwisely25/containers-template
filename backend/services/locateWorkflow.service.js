@@ -88,7 +88,7 @@ const validateTicket = ({ ticketId }) => {
     },
   });
 
-  return { ok: isCompliant, ticket: updated, reasons };
+  return { ok: isCompliant, ticket: updated, reasons, ...(isCompliant ? {} : { reason: 'Locate validation failed.' }) };
 };
 
 const submitTicket = ({ ticketId }) => {

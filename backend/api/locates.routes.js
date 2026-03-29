@@ -15,7 +15,10 @@ locatesRoutes.post('/draft', async (c) => {
   if (!body.jobId) return c.json({ ok: false, reason: 'jobId is required.' }, 400);
 
   const result = createDraftTicket({ jobId: body.jobId, actor: body.actor || 'system', payload: body });
-  if (!result.ok) return c.json(result, 400);
+  if (!result.ok) {
+    const status = result.reason === 'Job not found.' ? 404 : 400;
+    return c.json(result, status);
+  }
 
   recordAuditEvent({
     actionType: 'locate_draft_created',
@@ -38,14 +41,28 @@ locatesRoutes.post('/validate', async (c) => {
     payload: { ticketId: body.ticketId, ok: result.ok, reasons: result.reasons || [] },
   });
 
+  if (!result.ok) {
+    const notFoundReasons = ['Ticket not found.', 'Associated job not found.'];
+    const status = notFoundReasons.includes(result.reason) ? 404 : 400;
+    return c.json(
+      {
+        ok: false,
+        data: result.ticket || null,
+        reason: result.reason,
+        reasons: result.reasons || [],
+      },
+      status,
+    );
+  }
+
   return c.json(
     {
-      ok: result.ok,
+      ok: true,
       data: result.ticket || null,
       reason: result.reason,
       reasons: result.reasons || [],
     },
-    result.ok ? 200 : 400,
+    200,
   );
 });
 
@@ -71,7 +88,10 @@ locatesRoutes.post('/:ticketId/submit', async (c) => {
     payload: { ticketId: c.req.param('ticketId'), ok: result.ok, reason: result.reason || null },
   });
 
-  if (!result.ok) return c.json(result, 400);
+  if (!result.ok) {
+    const status = result.reason === 'Ticket not found.' ? 404 : 400;
+    return c.json(result, status);
+  }
   return c.json({ ok: true, data: result.ticket });
 });
 

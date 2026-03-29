@@ -23,7 +23,10 @@ assignmentsRoutes.post('/:jobId/issue', async (c) => {
     payload: { jobId: c.req.param('jobId'), ok: result.ok, reason: result.reason || null },
   });
 
-  if (!result.ok) return c.json(result, 400);
+  if (!result.ok) {
+    const status = result.reason === 'Job not found.' ? 404 : 400;
+    return c.json(result, status);
+  }
   return c.json({ ok: true, data: result.assignment }, 201);
 });
 

@@ -21,9 +21,10 @@ jobsRoutes.get('/:jobId', (c) => {
 
 jobsRoutes.patch('/:jobId', async (c) => {
   const body = (await c.req.json().catch(() => ({}))) || {};
-  const job = updateJob(c.req.param('jobId'), body);
+  const { actor, ...jobUpdate } = body;
+  const job = updateJob(c.req.param('jobId'), jobUpdate);
   if (!job) return c.json({ ok: false, reason: 'Job not found.' }, 404);
-  recordAuditEvent({ actionType: 'job_updated', actor: body.actor || 'system', payload: { jobId: job.id } });
+  recordAuditEvent({ actionType: 'job_updated', actor: actor || 'system', payload: { jobId: job.id } });
   return c.json({ ok: true, data: job });
 });
 

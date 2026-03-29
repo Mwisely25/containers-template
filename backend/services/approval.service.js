@@ -1,6 +1,8 @@
 const { store, nextId } = require('./_memoryStore');
 const { getJob, updateJob } = require('./jobCreation.service');
 
+const VALID_DECISIONS = ['approved', 'rejected'];
+
 const createApprovalRequest = ({ jobId, actor = 'system', payload = {} }) => {
   const job = getJob(jobId);
   if (!job) return { ok: false, reason: 'Job not found.' };
@@ -39,8 +41,16 @@ const ensureLocateGate = (job) => {
 };
 
 const resolveApproval = ({ jobId, actor = 'manager', decision, note }) => {
+  if (!VALID_DECISIONS.includes(decision)) {
+    return { ok: false, reason: `Invalid decision. Allowed values: ${VALID_DECISIONS.join(', ')}.` };
+  }
+
   const job = getJob(jobId);
   if (!job) return { ok: false, reason: 'Job not found.' };
+
+  if (!job.classification) {
+    return { ok: false, reason: 'Job must be classified before an approval decision can be made.' };
+  }
 
   const approval = Array.from(store.approvals.values())
     .filter((item) => item.jobId === jobId)
@@ -64,7 +74,7 @@ const resolveApproval = ({ jobId, actor = 'manager', decision, note }) => {
   };
 
   store.approvals.set(updated.id, updated);
-  updateJob(jobId, { status: decision === 'approved' ? 'approved_for_issue' : 'underground_review_required' });
+  updateJob(jobId, { status: decision === 'approved' ? 'approved_for_issue' : 'rejected' });
 
   return { ok: true, approval: updated };
 };

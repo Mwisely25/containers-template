@@ -3,6 +3,10 @@ const { getJob, updateJob } = require('./jobCreation.service');
 const { getApprovalForJob } = require('./approval.service');
 
 const ensureReadyForAssignment = (job) => {
+  if (!job.classification) {
+    return { ok: false, reason: 'Job must be classified before assignment issuance.' };
+  }
+
   const approval = getApprovalForJob(job.id);
   if (!approval || (approval.status !== 'approved' && approval.status !== 'auto_approved')) {
     return { ok: false, reason: 'Management approval is required before assignment issue.' };

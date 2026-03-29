@@ -51,6 +51,10 @@ const updateJob = (jobId, patch = {}) => {
       ...existing.documentMetadata,
       ...(patch.documentMetadata || {}),
     },
+    workflow: {
+      ...existing.workflow,
+      ...(patch.workflow || {}),
+    },
     updatedAt: new Date().toISOString(),
   };
 

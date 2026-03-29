@@ -23,7 +23,10 @@ approvalsRoutes.post('/:jobId/request', async (c) => {
     payload: { jobId: c.req.param('jobId'), ok: result.ok, reason: result.reason || null },
   });
 
-  if (!result.ok) return c.json(result, 400);
+  if (!result.ok) {
+    const status = result.reason === 'Job not found.' ? 404 : 400;
+    return c.json(result, status);
+  }
   return c.json({ ok: true, data: result.approval, reused: Boolean(result.reused) });
 });
 
@@ -42,7 +45,11 @@ approvalsRoutes.post('/:jobId/approve', async (c) => {
     payload: { jobId: c.req.param('jobId'), decision: 'approved', ok: result.ok, reason: result.reason || null },
   });
 
-  if (!result.ok) return c.json(result, 400);
+  if (!result.ok) {
+    const notFoundReasons = ['Job not found.', 'No approval request found for job.'];
+    const status = notFoundReasons.includes(result.reason) ? 404 : 400;
+    return c.json(result, status);
+  }
   return c.json({ ok: true, data: result.approval });
 });
 
@@ -61,7 +68,11 @@ approvalsRoutes.post('/:jobId/reject', async (c) => {
     payload: { jobId: c.req.param('jobId'), decision: 'rejected', ok: result.ok, reason: result.reason || null },
   });
 
-  if (!result.ok) return c.json(result, 400);
+  if (!result.ok) {
+    const notFoundReasons = ['Job not found.', 'No approval request found for job.'];
+    const status = notFoundReasons.includes(result.reason) ? 404 : 400;
+    return c.json(result, status);
+  }
   return c.json({ ok: true, data: result.approval });
 });
 
