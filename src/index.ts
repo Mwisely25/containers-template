@@ -66,7 +66,7 @@ app.use("/api/*", jsonFirewall);
 
 app.get("/", (c) => {
 	return c.text(
-		"Crewproof endpoints:\n" +
+		"Apple flight test endpoints:\n" +
 			"GET /api/health - API availability\n" +
 			"POST /api/lead - Validate lead intake JSON\n" +
 			"GET /container/<ID> - Start a container for each ID\n" +
@@ -79,7 +79,7 @@ app.get("/", (c) => {
 app.get("/api/health", (c) => {
 	return c.json({
 		status: "ok",
-		service: "crewproof",
+		service: "apple-flight-test",
 		timestamp: new Date().toISOString(),
 	});
 });
