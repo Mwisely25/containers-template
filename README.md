@@ -44,7 +44,7 @@ You can start editing your Worker by modifying `src/index.ts` and you can start
 editing your Container by editing the content of `container_src`.
 
 
-## Crewproof readiness updates
+## Apple flight test readiness updates
 
 The Worker now includes:
 
