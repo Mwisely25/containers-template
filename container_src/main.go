@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -108,12 +109,14 @@ func jobsCollectionHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		query := r.URL.Query().Get("q")
+		results := store.Search(query)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"query": query,
-			"count": len(store.Search(query)),
-			"jobs":  store.Search(query),
+			"count": len(results),
+			"jobs":  results,
 		})
 	case http.MethodPost:
+		r.Body = http.MaxBytesReader(w, r.Body, 8<<20)
 		job, err := parseJobFromRequest(r)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -160,6 +163,10 @@ func parseJSONJob(body io.Reader) (Job, error) {
 		SourceBody  string `json:"sourceBody"`
 	}
 	if err := json.NewDecoder(body).Decode(&payload); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			return Job{}, fmt.Errorf("request body too large")
+		}
 		return Job{}, fmt.Errorf("invalid JSON payload")
 	}
 	return buildJob(payload.Title, payload.Company, payload.Location, payload.Description, payload.SourceName, payload.SourceBody)
@@ -242,7 +249,13 @@ func main() {
 	router.HandleFunc("/api/jobs/", jobsDetailHandler)
 	router.HandleFunc("/error", errorHandler)
 
-	server := &http.Server{Addr: ":8080", Handler: router}
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
 	go func() {
 		log.Printf("Server listening on %s\n", server.Addr)
