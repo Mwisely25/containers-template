@@ -81,7 +81,23 @@ app.get("/app/job-detail", (c) => {
 
 app.get("/app/:workspace", (c) => {
 	const workspace = c.req.param("workspace") as WorkspaceKey;
-	const allowed: WorkspaceKey[] = ["dashboard", "jobs", "811", "permits", "documents", "spreadsheets", "maps", "viewer", "dispatch", "billing", "reporting", "admin"];
+	const allowed: WorkspaceKey[] = [
+		"dashboard",
+		"jobs",
+		"811",
+		"permits",
+		"documents",
+		"spreadsheets",
+		"maps",
+		"viewer",
+		"dispatch",
+		"billing",
+		"reporting",
+		"onboarding",
+		"messaging",
+		"profile",
+		"admin",
+	];
 	if (!allowed.includes(workspace)) {
 		return c.notFound();
 	}

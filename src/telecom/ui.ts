@@ -12,6 +12,9 @@ const navItems: Array<{ key: WorkspaceKey; label: string }> = [
 	{ key: "dispatch", label: "Dispatch" },
 	{ key: "billing", label: "Billing" },
 	{ key: "reporting", label: "Reporting" },
+	{ key: "onboarding", label: "Onboarding" },
+	{ key: "messaging", label: "Email Hub" },
+	{ key: "profile", label: "Profile" },
 	{ key: "admin", label: "Admin" },
 ];
 

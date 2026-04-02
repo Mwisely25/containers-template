@@ -22,7 +22,10 @@ export type WorkspaceKey =
 	| "dispatch"
 	| "billing"
 	| "reporting"
-	| "admin";
+	| "admin"
+	| "onboarding"
+	| "profile"
+	| "messaging";
 
 export interface JobRecord {
 	id: string;
@@ -66,6 +69,9 @@ export const workspaceTitles: Record<WorkspaceKey, string> = {
 	billing: "Billing Center",
 	reporting: "Reporting Dashboard",
 	admin: "Admin / Settings",
+	onboarding: "Prime & Contractor Onboarding",
+	profile: "Profile & Modes",
+	messaging: "Email Hub",
 };
 
 export const jobs: JobRecord[] = [
