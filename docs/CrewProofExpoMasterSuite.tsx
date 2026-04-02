@@ -8,6 +8,7 @@ import {
   TextInput,
   StyleSheet,
 } from "react-native";
+import MapView, { Marker, Polyline, Polygon } from "react-native-maps";
 
 const COLORS = {
   bg: "#0a0a0a",
@@ -100,6 +101,64 @@ function Pill({ label, tone = "default" }) {
   );
 }
 
+function MapWorkspaceReal({ selectedJob }: { selectedJob?: { id?: string } }) {
+  return (
+    <MapView
+      style={{ height: 350, borderRadius: 20 }}
+      initialRegion={{
+        latitude: 35.2271,
+        longitude: -80.8431,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }}
+    >
+      <Polygon
+        coordinates={[
+          { latitude: 35.2275, longitude: -80.844 },
+          { latitude: 35.2275, longitude: -80.842 },
+          { latitude: 35.226, longitude: -80.842 },
+          { latitude: 35.226, longitude: -80.844 },
+        ]}
+        strokeColor="#22d3ee"
+        fillColor="rgba(34,211,238,0.2)"
+      />
+
+      <Polyline
+        coordinates={[
+          { latitude: 35.227, longitude: -80.844 },
+          { latitude: 35.2265, longitude: -80.8425 },
+        ]}
+        strokeColor="#60a5fa"
+        strokeWidth={4}
+      />
+
+      <Polyline
+        coordinates={[
+          { latitude: 35.227, longitude: -80.844 },
+          { latitude: 35.2268, longitude: -80.8428 },
+        ]}
+        strokeColor="#4ade80"
+        strokeWidth={4}
+      />
+
+      <Polyline
+        coordinates={[
+          { latitude: 35.2272, longitude: -80.8438 },
+          { latitude: 35.2266, longitude: -80.8426 },
+        ]}
+        strokeColor="#facc15"
+        strokeWidth={4}
+      />
+
+      <Marker
+        coordinate={{ latitude: 35.2267, longitude: -80.8427 }}
+        title={selectedJob?.id ? `Conflict Point • ${selectedJob.id}` : "Conflict Point"}
+        pinColor="red"
+      />
+    </MapView>
+  );
+}
+
 // ... trimmed for brevity in this repository copy.
 // The complete component source should remain in the original design handoff.
 
@@ -119,6 +178,7 @@ export const __test__ = {
   densities: ["comfortable", "compact"],
   tiers: ["starter", "pro", "enterprise"],
   jobs: JOBS.map((job) => job.id),
+  mapWorkspaceComponent: typeof MapWorkspaceReal === "function",
 };
 
 const styles = StyleSheet.create({
